@@ -19,7 +19,7 @@ module.exports = (on, config) => {
   };
   on('file:preprocessor', wp(options));
   on('before:browser:launch', (browser, args) => {
-    if (browser.family === 'chromium' && browser.isHeaded) {
+    if (browser.family === 'chromium' ) {
       const extensionFolder = path.resolve(__dirname, '..', '..', '..', 'dist/extension');
       args.extensions.push(extensionFolder);
     }

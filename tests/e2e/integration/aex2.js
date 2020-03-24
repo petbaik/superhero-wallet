@@ -12,7 +12,7 @@ describe('Tests cases for AEX-2 communication', () => {
     cy.visit('/');
   });
 
-  if (Cypress.browser.family === 'chromium' && Cypress.browser.isHeaded) {
+  if (Cypress.browser.family === 'chromium' ) { //&& Cypress.browser.isHeaded
     it('Find wallet', () => {
       cy.get('[data-cy=wallet-found]').should('be.visible');
     });
