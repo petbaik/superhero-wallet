@@ -2,12 +2,12 @@
   <div class="content">
     <ae-main>
       <ae-panel class="text-center">
-        <img :src="logo" alt="SuperHero logo" />
+        <img src="../icons/icon_128.png" alt="SuperHero logo" />
         <h1><ae-icon fill="primary" face="round" name="info" />SuperHero Phishing Detection</h1>
         <p>
-          This domain is currently on the SuperHero domain warning list. This means that based on information available to us, SuperHero believes this domain could currently compromise
-          your security and, as an added safety feature, SuperHero has restricted access to the site. To override this, please read the rest of this warning for instructions on how to
-          continue at your own risk.
+          This domain is currently on the SuperHero domain warning list. This means that based on information available to us, SuperHero believes this domain could currently
+          compromise your security and, as an added safety feature, SuperHero has restricted access to the site. To override this, please read the rest of this warning for
+          instructions on how to continue at your own risk.
         </p>
         <p>
           There are many reasons sites can appear on our warning list, and our warning list compiles from other widely used industry lists. Such reasons can include known fraud or
@@ -28,13 +28,11 @@
 
 <script>
 import { setInterval } from 'timers';
-import { getPhishingUrls, setPhishingUrl } from '../popup/utils/phishing-detect';
 
 export default {
   name: 'App',
   data() {
     return {
-      logo: browser.runtime.getURL('../../../icons/icon_128.png'),
       href: null,
       hostname: null,
     };
@@ -43,36 +41,32 @@ export default {
     const uri = window.location.href.split('#');
     if (typeof uri[1] !== 'undefined') {
       const url = uri[1].split('&');
-      let hostname = '';
-      let href = '';
       if (typeof url[0] !== 'undefined') {
         const host = url[0].split('=');
         if (typeof host[1] !== 'undefined') {
-          hostname = host[1];
-          this.hostname = hostname;
+          [, this.hostname] = host;
         }
       }
       if (typeof url[1] !== 'undefined') {
         const host = url[1].split('=');
         if (typeof host[1] !== 'undefined') {
-          href = host[1];
-          this.href = href;
+          [, this.href] = host;
         }
-      }
-      if (hostname != '') {
       }
     }
   },
   methods: {
-    continueHost(e) {
-      if (this.href != '' && this.href != null) {
+    continueHost() {
+      if (this.href !== '' && this.href != null) {
         browser.runtime.sendMessage({
           method: 'setPhishingUrl',
           params: {
             hostname: this.hostname,
           },
         });
-        setInterval(() => (window.location.href = this.href), 500);
+        setInterval(() => {
+          window.location.href = this.href;
+        }, 500);
       }
     },
   },

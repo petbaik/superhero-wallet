@@ -37,7 +37,7 @@ import { MAGNITUDE, calculateFee, TX_TYPES, BACKEND_URL } from '../../utils/cons
 import { pollGetter } from '../../utils/helper';
 import { setPendingTx } from '../../utils';
 import openUrl from '../../utils/openUrl';
-import CheckIcon from '../../../icons/check-icon.svg';
+import CheckIcon from '../../../icons/check-icon.svg?vue-component';
 import AmountSend from '../components/AmountSend';
 
 export default {
@@ -97,7 +97,7 @@ export default {
     },
     async sendTip() {
       this.amountError = !this.amount || !this.minCallFee || this.maxValue - this.amount <= 0;
-      this.amountError = this.amountError || Number.isNaN(this.amount) || this.amount <= 0;
+      this.amountError = this.amountError || isNaN(this.amount) || this.amount <= 0;
       if (this.amountError) return;
 
       const amount = BigNumber(this.amount).shiftedBy(MAGNITUDE);

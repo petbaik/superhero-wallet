@@ -7,7 +7,9 @@
       </div>
     </h3>
     <p class="primary-title primary-title-darker text-left mb-8 f-16">
-      {{ $t('pages.successTip.successfullySent') }} <span class="secondary-text" data-cy="tip-amount">{{ amountTip }} {{ $t('pages.appVUE.aeid') }} </span> ({{ getCurrencyAmount }}
+      {{ $t('pages.successTip.successfullySent') }} <span class="secondary-text" data-cy="tip-amount">{{ amountTip }} {{ $t('pages.appVUE.aeid') }} </span> ({{
+        getCurrencyAmount
+      }}
       {{ currentCurrency }})
       {{ $t('pages.successTip.to') }}
     </p>
@@ -40,7 +42,7 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import Heart from '../../../icons/heart.svg';
+import Heart from '../../../icons/heart.svg?vue-component';
 import Textarea from '../components/Textarea';
 import openUrl from '../../utils/openUrl';
 

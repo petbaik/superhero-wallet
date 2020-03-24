@@ -1,5 +1,5 @@
 <template>
-  <div class="external-svg" :style="{ 'background-image': 'url(' + accbalanceBG + ')' }" data-cy="balance-info">
+  <div class="external-svg" data-cy="balance-info">
     <span class="title">{{ $t('pages.account.balance') }}</span>
     <div class="balance no-sign">
       <div class="amount">
@@ -13,7 +13,7 @@
             <ae-button data-cy="toggle-currency-dropdown" @click="toggleDropdown($event, '.have-subDropdown')">
               {{ balanceCurrency }}
               <span class="accent-text">{{ currentCurrency }}</span>
-              <DropdownArrow />
+              <ExpandedAngleArrow />
             </ae-button>
           </div>
           <ul class="sub-dropdown">
@@ -31,15 +31,14 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import DropdownArrow from '../../../icons/dropdownarrow.svg';
+import ExpandedAngleArrow from '../../../icons/expanded-angle-arrow.svg?vue-component';
 
 export default {
   components: {
-    DropdownArrow,
+    ExpandedAngleArrow,
   },
   data() {
     return {
-      accbalanceBG: browser.runtime.getURL('../icons/acc_balance.png'),
       dropdown: {
         currencies: false,
       },
@@ -50,10 +49,7 @@ export default {
   },
   methods: {
     async toggleDropdown(event, parentClass) {
-      if (typeof parentClass === 'undefined') {
-        parentClass = '.currenciesgroup';
-      }
-      const dropdownParent = event.target.closest(parentClass);
+      const dropdownParent = event.target.closest(!parentClass ? '.currenciesgroup' : parentClass);
       this.dropdown[dropdownParent.id] = !this.dropdown[dropdownParent.id];
     },
     async switchCurrency(currency) {
@@ -136,6 +132,7 @@ export default {
   height: 84px;
   position: relative;
   text-align: center;
+  background-image: url('../../../icons/acc_balance.png');
   .title {
     position: absolute;
     left: 20px;

@@ -1,3 +1,5 @@
+import { DEFAULT_NETWORK } from '../popup/utils/constants';
+
 export const getters = {
   account(state) {
     return state.account;
@@ -17,6 +19,11 @@ export const getters = {
   network(state) {
     return state.network;
   },
+  networks({ network }) {
+    const networks = { ...network };
+    networks[DEFAULT_NETWORK].system = true;
+    return networks;
+  },
   userNetworks(state) {
     return state.userNetworks;
   },
@@ -32,6 +39,9 @@ export const getters = {
   transactions(state) {
     return state.transactions;
   },
+  pendingTransactions(state) {
+    return state.transactions.pending;
+  },
   wallet(state) {
     return state.wallet;
   },
@@ -40,13 +50,16 @@ export const getters = {
   },
   activeAccountName(state) {
     const account = state.subaccounts.find(s => s.publicKey === state.account.publicKey);
-    return account ? (account.aename ? account.aename : account.name) : 'Main Account';
+    return account.aename ? account.aename : account.name;
   },
   sdk(state) {
     return state.sdk;
   },
+  middleware(state) {
+    return state.middleware;
+  },
   tokenBalance(state) {
-    return state.current.token != 0 ? state.tokens[state.current.token].balance.toFixed(3) : state.balance.toFixed(3);
+    return state.current.token !== 0 ? state.tokens[state.current.token].balance.toFixed(3) : state.balance.toFixed(3);
   },
   tokenSymbol() {
     return 'AE';
@@ -59,7 +72,7 @@ export const getters = {
   },
   isLedger(state) {
     if (state.subaccounts.length > 0) {
-      return state.subaccounts.find(s => s.publicKey == state.account.publicKey).isLedger;
+      return state.subaccounts.find(s => s.publicKey === state.account.publicKey).isLedger;
     }
     return state.subaccounts;
   },

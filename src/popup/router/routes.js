@@ -1,7 +1,5 @@
 import IndexComponent from './pages/Index';
 import AccountComponent from './pages/Account';
-import AccountPasswordComponent from './pages/AccountPassword';
-import SeedPhraseComponent from './pages/SeedPhrase';
 import PopupSignTransactionComponent from './pages/Popups/PopupSignTx';
 import PopupConnectComponent from './pages/Popups/PopupConnect';
 import PopupAskAccountsComponent from './pages/Popups/PopupAskAccounts';
@@ -22,10 +20,11 @@ import TransactionsComponent from './pages/Transactions';
 import SendComponent from './pages/Send';
 import ReceiveComponent from './pages/Receive';
 import SuccessTip from './pages/SuccessTip';
-import WelcomePage from './pages/Welcome';
 import NotificationsPage from './pages/Notifications';
-import NamesPage from './pages/Names.vue';
+import NamesPage from './pages/Names';
 import AuctionBid from './pages/AuctionBid';
+import Networks from './pages/Networks';
+import NotFound from './pages/NotFound';
 
 export default [
   {
@@ -34,6 +33,8 @@ export default [
     meta: {
       title: '',
       navigation: false,
+      ifNotAuthOnly: true,
+      notPersist: true,
     },
   },
   {
@@ -42,46 +43,49 @@ export default [
     component: AccountComponent,
   },
   {
-    name: 'password',
-    path: '/password',
-    component: AccountPasswordComponent,
-    props: true,
-  },
-  {
-    name: 'seed',
-    path: '/seed',
-    component: SeedPhraseComponent,
-    props: true,
-  },
-  {
     name: 'sign',
     path: '/sign-transaction/:type?',
     component: SignTransactionComponent,
     props: true,
+    meta: {
+      notPersist: true,
+    },
   },
   {
     name: 'popup-sign-tx',
     path: '/popup-sign-tx',
     component: PopupSignTransactionComponent,
     props: true,
+    meta: {
+      notPersist: true,
+    },
   },
   {
     name: 'connect',
     path: '/connect',
     component: PopupConnectComponent,
     props: true,
+    meta: {
+      notPersist: true,
+    },
   },
   {
     name: 'ask-accounts',
     path: '/ask-accounts',
     component: PopupAskAccountsComponent,
     props: true,
+    meta: {
+      notPersist: true,
+    },
   },
   {
     name: 'message-sign',
     path: '/message-sign',
     component: PopupMessageSignComponent,
     props: true,
+    meta: {
+      notPersist: true,
+    },
   },
   {
     path: '/settings',
@@ -132,6 +136,7 @@ export default [
     component: QrCodeReader,
     meta: {
       title: 'scanQr',
+      notPersist: true,
     },
   },
   {
@@ -139,6 +144,7 @@ export default [
     component: TermsOfService,
     meta: {
       title: 'terms',
+      ifNotAuth: true,
     },
   },
   {
@@ -153,11 +159,16 @@ export default [
     component: ImportAccount,
     meta: {
       title: 'importAccount',
+      ifNotAuthOnly: true,
     },
   },
   {
     path: '/intro',
     component: IntroComponent,
+    meta: {
+      ifNotAuthOnly: true,
+      notPersist: true,
+    },
   },
 
   {
@@ -190,13 +201,7 @@ export default [
     props: true,
     meta: {
       title: 'send',
-    },
-  },
-  {
-    path: '/welcome',
-    component: WelcomePage,
-    meta: {
-      navigation: false,
+      notPersist: true,
     },
   },
   {
@@ -204,6 +209,7 @@ export default [
     component: NotificationsPage,
     meta: {
       title: 'notifications',
+      notPersist: true,
     },
   },
   {
@@ -220,6 +226,23 @@ export default [
     props: true,
     meta: {
       title: 'bidding',
+      notPersist: true,
+    },
+  },
+  {
+    path: '/networks',
+    component: Networks,
+    props: true,
+    meta: {
+      title: 'networks',
+    },
+  },
+  {
+    name: 'not-found',
+    path: '*',
+    component: NotFound,
+    meta: {
+      ifNotAuth: true,
     },
   },
 ];

@@ -1,6 +1,7 @@
+/* eslint-disable radix */
 import { mnemonicToSeed } from '@aeternity/bip39';
-import { testAccount, txParams} from './config';
 import { TxBuilder } from '@aeternity/aepp-sdk/es';
+import { testAccount, txParams } from './config';
 
 export const setTxInQueue = async tx => {
   const { processingTx } = await browser.storage.local.get('processingTx');
@@ -20,7 +21,8 @@ export const setPendingTx = async tx => {
   }
   list.push(tx);
   await setTxInQueue(tx.hash);
-  return await browser.storage.local.set({ pendingTxs: list });
+  await browser.storage.local.set({ pendingTxs: list });
+  return true;
 };
 
 export const formatTime = time => new Date(parseInt(time)).toLocaleTimeString(navigator.language, { timeStyle: 'short', hourCycle: 'h24', hour: '2-digit', minute: '2-digit' });
@@ -35,15 +37,15 @@ export const formatDate = time =>
     day: '2-digit',
     month: '2-digit',
     year: '2-digit',
-});
+  });
 
 export const mockLogin = async (options = {}) => {
-  const { mnemonic, publicKey} = testAccount
-  const seed = mnemonicToSeed(mnemonic).toString('hex')
+  const { mnemonic, publicKey } = testAccount;
+  const seed = mnemonicToSeed(mnemonic).toString('hex');
   const keypair = {
     publicKey,
-    privateKey: seed
-  }
+    privateKey: seed,
+  };
   await browser.storage.local.set({ userAccount: keypair, isLogged: true, termsAgreed: true });
   const sub = [];
   sub.push({
@@ -51,15 +53,13 @@ export const mockLogin = async (options = {}) => {
     publicKey: keypair.publicKey,
     balance: 0,
     root: true,
-    aename: options.name ? options.name :  null,
+    aename: options.name ? options.name : null,
   });
-  await browser.storage.local.set({ subaccounts: sub, activeAccount: 0, mnemonic: mnemonic });
-  
-  if(options.balance) await browser.storage.local.set({ tokenBal: options.balance })
-  if(options.lastRoute) await localStorage.setItem("lsroute", options.lastRoute)
-  if(options.backupSeed) await browser.storage.local.set({ backed_up_Seed: true })
-  
-}
+  await browser.storage.local.set({ subaccounts: sub, activeAccount: 0, mnemonic });
 
+  if (options.balance) await browser.storage.local.set({ tokenBal: options.balance });
+  if (options.lastRoute) await localStorage.setItem('lsroute', options.lastRoute);
+  if (options.backupSeed) await browser.storage.local.set({ backed_up_Seed: true });
+};
 
-export const buildTx = (txtype) => TxBuilder.buildTx({ ...txParams[txtype]}, txtype)
+export const buildTx = txtype => TxBuilder.buildTx({ ...txParams[txtype] }, txtype);

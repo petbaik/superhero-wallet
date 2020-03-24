@@ -50,12 +50,11 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import BigNumber from 'bignumber.js';
 import axios from 'axios';
-import { MAGNITUDE, calculateFee, TX_TYPES, BACKEND_URL } from '../../utils/constants';
-import { escapeSpecialChars, pollGetter } from '../../utils/helper';
+import { calculateFee, TX_TYPES, BACKEND_URL } from '../../utils/constants';
+import { escapeSpecialChars, pollGetter, aeToAettos } from '../../utils/helper';
 import { setPendingTx } from '../../utils';
-import CheckIcon from '../../../icons/check-icon.svg';
+import CheckIcon from '../../../icons/check-icon.svg?vue-component';
 import AmountSend from '../components/AmountSend';
 import Textarea from '../components/Textarea';
 import Input from '../components/Input';
@@ -79,6 +78,8 @@ export default {
       minCallFee: null,
       editUrl: false,
       verifiedUrls: [],
+      IS_EXTENSION: process.env.IS_EXTENSION,
+      RUNNING_IN_TESTS: process.env.RUNNING_IN_TESTS,
     };
   },
   computed: {
@@ -96,8 +97,8 @@ export default {
   },
   watch: {
     amount() {
-      if(isNaN(this.amount) || parseFloat(this.amount) === 0) {
-        this.amountError = true
+      if (isNaN(this.amount) || parseFloat(this.amount) === 0) {
+        this.amountError = true;
       } else {
         this.amountError = false;
       }
@@ -125,8 +126,14 @@ export default {
         this.url = tab.url;
       }
     }
-
-    this.verifiedUrls = (await axios.get(`${BACKEND_URL}/verified`)).data;
+    // if mobile
+    if (!this.IS_EXTENSION && !this.RUNNING_IN_TESTS) {
+      this.url = '';
+      this.editUrl = true;
+    }
+    try {
+      this.verifiedUrls = (await axios.get(`${BACKEND_URL}/verified`)).data;
+    } catch (e) {}
 
     await pollGetter(() => this.sdk);
     this.minCallFee = calculateFee(TX_TYPES.contractCall, {
@@ -157,12 +164,12 @@ export default {
     },
     toConfirm() {
       this.amountError = !this.amount || !this.minCallFee || this.maxValue - this.amount <= 0;
-      this.amountError = this.amountError || Number.isNaN(this.amount) || this.amount <= 0 || isNaN(this.amount);
+      this.amountError = this.amountError || isNaN(this.amount) || this.amount <= 0 || isNaN(this.amount);
       this.noteError = !this.note || !this.url;
       this.confirmMode = !this.amountError && !this.noteError;
     },
     async sendTip() {
-      const amount = BigNumber(this.amount).shiftedBy(MAGNITUDE);
+      const amount = aeToAettos(this.amount);
       this.loading = true;
       try {
         const res = await this.tipping.call('tip', [this.url, escapeSpecialChars(this.note)], { amount, waitMined: false });

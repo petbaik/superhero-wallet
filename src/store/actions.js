@@ -1,9 +1,9 @@
 import { uniqBy, flatten } from 'lodash-es';
+import BigNumber from 'bignumber.js';
 import * as types from './mutation-types';
 import * as popupMessages from '../popup/utils/popup-messages';
-import { convertToAE, stringifyForStorage, parseFromStorage } from '../popup/utils/helper';
-import { BACKEND_URL } from '../popup/utils/constants';
-import router from '../popup/router/index';
+import { convertToAE, stringifyForStorage, parseFromStorage, aettosToAe } from '../popup/utils/helper';
+import { BACKEND_URL, DEFAULT_NETWORK } from '../popup/utils/constants';
 import { postMessage } from '../popup/utils/connection';
 
 export default {
@@ -17,12 +17,9 @@ export default {
   setSubAccounts({ commit }, payload) {
     commit(types.SET_SUBACCOUNTS, payload);
   },
-  switchNetwork({ commit }, payload) {
-    browser.storage.local.set({ activeNetwork: payload });
-    return new Promise((resolve, reject) => {
-      commit(types.SWITCH_NETWORK, payload);
-      resolve();
-    });
+  async switchNetwork({ commit }, payload) {
+    await browser.storage.local.set({ activeNetwork: payload });
+    return commit(types.SWITCH_NETWORK, payload);
   },
   async updateBalance({ commit, state }) {
     const balance = await state.sdk.balance(state.account.publicKey).catch(() => 0);
@@ -74,7 +71,7 @@ export default {
             commit(types.SHOW_POPUP, { show: true, ...popupMessages.TRANSACTION_FAILED });
             break;
           case 'tx_error':
-            commit(types.SHOW_POPUP, { show: true, ...popupMessages.TRANSACTION_FAILED, msg:payload.msg });
+            commit(types.SHOW_POPUP, { show: true, ...popupMessages.TRANSACTION_FAILED, msg: payload.msg });
             break;
           case 'integer_required':
             commit(types.SHOW_POPUP, { show: true, ...popupMessages.INTEGER_REQUIRED });
@@ -152,37 +149,30 @@ export default {
           case 'name_exists':
             commit(types.SHOW_POPUP, { show: true, ...popupMessages.USER_NETWORK_EXISTS_ERROR });
             break;
+          default:
+            break;
         }
         break;
       default:
         break;
     }
   },
-  getTransactionsByPublicKey({ state }, payload) {
+  async fetchTransactions({ state }, { limit, page }) {
+    if (!state.middleware) return [];
     const { middlewareUrl } = state.network[state.current.network];
-    let limit = '';
-    let page = '';
-    let param = '';
-    const account = payload.publicKey;
-    if (payload.limit) {
-      limit = `?limit=${payload.limit}`;
+    const { publicKey } = state.account;
+    try {
+      const tx = await fetch(`${middlewareUrl}/middleware/transactions/account/${publicKey}?page=${page}&limit=${limit}`, {
+        method: 'GET',
+        mode: 'cors',
+      });
+      return tx.json();
+    } catch (e) {
+      return [];
     }
-    if (payload.page) {
-      page = `&page=${payload.page}`;
-    }
-    if (payload.param) {
-      param = `/${payload.param}`;
-    }
-    return fetch(`${middlewareUrl}/middleware/transactions/account/${account}${limit}${page}${param}`, {
-      method: 'GET',
-      mode: 'cors',
-    }).then(res => res.json());
   },
   updateLatestTransactions({ commit }, payload) {
     commit(types.UPDATE_LATEST_TRANSACTIONS, payload);
-  },
-  updateAllTransactions({ commit }, payload) {
-    commit(types.UPDATE_ALL_TRANSACTIONS, payload);
   },
   setAccountName({ commit }, payload) {
     commit(types.SET_ACCOUNT_NAME, payload);
@@ -191,6 +181,7 @@ export default {
     commit(types.INIT_SDK, payload);
   },
   async getRegisteredNames({ commit, state }) {
+    if (!state.middleware) return;
     const { middlewareUrl } = state.network[state.current.network];
     const res = await Promise.all(
       state.subaccounts.map(async ({ publicKey }, index) => {
@@ -208,14 +199,14 @@ export default {
             (async () => uniqBy(await (await fetch(`${middlewareUrl}/middleware/names/reverse/${publicKey}`)).json(), 'name'))(),
             (async () => {
               try {
-                return await state.sdk.middleware.getActiveNames({ owner: publicKey });
+                return await state.middleware.getActiveNames({ owner: publicKey });
               } catch (e) {}
               return [];
             })(),
           ]);
           names = flatten(names);
           names = uniqBy(names, 'name');
-          if(!process.env.RUNNING_IN_TESTS) {
+          if (!process.env.RUNNING_IN_TESTS) {
             if (names.length) {
               commit(types.SET_ACCOUNT_AENS, { account: index, aename: names[0].name, pending: !!names[0].pending });
             } else {
@@ -229,6 +220,16 @@ export default {
     );
     await browser.storage.local.set({ subaccounts: state.subaccounts.filter(s => s.publicKey) });
     commit(types.SET_NAMES, { names: Array.prototype.concat.apply([], res) });
+  },
+  async fetchAuctionEntry({ state: { sdk } }, name) {
+    const { info, bids } = await sdk.middleware.getAuctionInfoByName(name);
+    return {
+      ...info,
+      bids: bids.map(({ tx }) => ({
+        ...tx,
+        nameFee: BigNumber(aettosToAe(tx.nameFee)),
+      })),
+    };
   },
   async removePendingName({ commit, state }, { hash }) {
     let pending = state.pendingNames;
@@ -276,43 +277,22 @@ export default {
     await dispatch('setSubAccounts', sub);
     commit('UPDATE_ACCOUNT', keypair);
     commit('SWITCH_LOGGED_IN', true);
-    // router.push('/account');
   },
   async getPendingTxs({ state: { current }, commit }) {
     const { pendingTxs } = await browser.storage.local.get('pendingTxs');
     let txs = [];
     if (pendingTxs && pendingTxs.length) {
       txs = pendingTxs.map(el => {
-        if (el.domain) el.domain = el.domain;
-        el.amount = parseFloat(el.amount).toFixed(3);
-        el.time = el.time;
-        el.amountCurrency = parseFloat(current.currencyRate ? el.amount * current.currencyRate : el.amount).toFixed(3);
-        return el;
+        const { time, domain } = el;
+        const amount = parseFloat(el.amount).toFixed(3);
+        const amountCurrency = parseFloat(current.currencyRate ? amount * current.currencyRate : amount).toFixed(3);
+        return { ...el, amount, time, amountCurrency, domain };
       });
     }
     commit('SET_PENDING_TXS', txs);
   },
-  async checkPendingTxMined({ commit, state: { sdk } }) {
-    const { pendingTxs } = await browser.storage.local.get('pendingTxs');
-    if (pendingTxs && pendingTxs.length) {
-      pendingTxs.forEach(async ({ hash, type, amount, domain }) => {
-        const mined = await sdk.poll(hash);
-        if (mined) {
-          const pending = pendingTxs.filter(p => p.hash !== hash);
-          browser.storage.local.set({ pendingTxs: pending });
-          commit('SET_PENDING_TXS', pending);
-          if (type === 'tip') {
-            return router.push({ name: 'success-tip', params: { amount, domain } });
-          }
-          if (type === 'spend') {
-            return router.push({ name: 'send', params: { redirectstep: 3, successtx: mined } });
-          }
-        }
-      });
-    }
-  },
-  async checkExtensionUpdate({ state: { network, current } }) {
-    const { tipContract } = network[current.network];
+  async checkExtensionUpdate({ state: { network } }) {
+    const { tipContract } = network[DEFAULT_NETWORK];
     let update = false;
     try {
       const { contractAddress } = await (await fetch(`${BACKEND_URL}/static/contract`)).json();
@@ -324,7 +304,9 @@ export default {
     return update;
   },
   async checkBackupSeed() {
+    // eslint-disable-next-line camelcase
     const { backed_up_Seed } = await browser.storage.local.get('backed_up_Seed');
+    // eslint-disable-next-line camelcase
     if (!backed_up_Seed) return false;
 
     return true;

@@ -3,14 +3,14 @@
     <ae-list class="spendTxDetailsList">
       <ae-list-item fill="neutral" class="flex-justify-between noBorder">
         <div class="flex flex-align-center accountFrom">
-          <ae-identicon :address="account.publicKey" />
+          <UserAvatar :address="account.publicKey" />
           <span class="spendAccountAddr">{{ activeAccountName }}</span>
         </div>
         <div class="arrowSeprator">
           <ae-icon name="left-more" />
         </div>
         <div class="flex flex-align-center accountTo" v-if="isAddressShow">
-          <ae-identicon :address="receiver" />
+          <UserAvatar :address="receiver" />
           <ae-address :value="receiver" v-if="receiver" length="short" class="spendAccountAddr" data-cy="address-receiver" />
           <span v-if="!receiver" class="spendAccountAddr">{{ $t('pages.signTransaction.unknownAccount') }}</span>
         </div>
@@ -102,15 +102,15 @@
 import { mapGetters } from 'vuex';
 import BigNumber from 'bignumber.js';
 import { TxBuilder } from '@aeternity/aepp-sdk/es';
-import { convertToAE, convertAmountToCurrency, getContractCallInfo, addTipAmount } from '../../../utils/helper';
-import { toMicro, MAGNITUDE } from '../../../utils/constants';
+import { convertToAE, getContractCallInfo, addTipAmount } from '../../../utils/helper';
+import { MAGNITUDE } from '../../../utils/constants';
 import Button from '../../components/Button';
-import Input from '../../components/Input';
 import AmountSend from '../../components/AmountSend';
 import getPopupProps from '../../../utils/getPopupProps';
+import UserAvatar from '../../components/UserAvatar';
 
 export default {
-  components: { Button, Input, AmountSend },
+  components: { Button, AmountSend, UserAvatar },
   data() {
     return {
       props: {},
@@ -134,7 +134,7 @@ export default {
       return this.unpackedTx ? this.unpackedTx.txType : null;
     },
     isAddressShow() {
-      if (this.txType == 'contractCreateTx' || this.txType == 'namePreClaimTx' || this.txType == 'nameClaimTx' || this.txType == 'nameUpdateTx') {
+      if (this.txType === 'contractCreateTx' || this.txType === 'namePreClaimTx' || this.txType === 'nameClaimTx' || this.txType === 'nameUpdateTx') {
         return false;
       }
       return true;
@@ -149,16 +149,16 @@ export default {
       return convertToAE(this.txObject.amount);
     },
     receiver() {
-      if (this.txType == 'spendTx') {
+      if (this.txType === 'spendTx') {
         return this.txObject.recipientId;
       }
-      if (this.txType == 'contractCallTx') {
+      if (this.txType === 'contractCallTx') {
         return this.txObject.contractId;
       }
       return '';
     },
     isNameTx() {
-      return this.txType == 'namePreClaimTx' || this.txType == 'nameClaimTx' || this.txType == 'nameUpdateTx';
+      return this.txType === 'namePreClaimTx' || this.txType === 'nameClaimTx' || this.txType === 'nameUpdateTx';
     },
     totalSpend() {
       const amount = this.tx.amount ? this.tx.amount : 0;
@@ -166,7 +166,7 @@ export default {
     },
   },
   watch: {
-    'tx.amount': function(newVal, oldVal) {
+    'tx.amount': function(newVal) {
       this.amountError = false;
       if (isNaN(newVal)) {
         this.amountError = true;
@@ -182,8 +182,8 @@ export default {
     },
     async signTransaction() {
       const { tx } = TxBuilder.buildTx({ ...this.unpackedTx.tx, ...this.tx, amount: BigNumber(this.tx.amount ? this.tx.amount : 0).shiftedBy(MAGNITUDE) }, this.txType);
-      const { isTip, amount } =  getContractCallInfo(tx);
-      if(isTip) {
+      const { isTip, amount } = getContractCallInfo(tx);
+      if (isTip) {
         await addTipAmount(amount);
       }
       if (parseFloat(this.tx.amount) !== convertToAE(this.unpackedTx.tx.amount)) {

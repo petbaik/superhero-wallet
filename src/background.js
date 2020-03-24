@@ -11,11 +11,10 @@ import { HDWALLET_METHODS, AEX2_METHODS, NOTIFICATION_METHODS, CONNECTION_TYPES,
 import { popupProps } from './popup/utils/config';
 import TipClaimRelay from './lib/tip-claim-relay';
 import RedirectChainNames from './lib/redirect-chain-names';
-import { setController } from './lib/background-utils';
+import { setController, switchNode } from './lib/background-utils';
 import { PopupConnections } from './lib/popup-connection';
 
 const controller = new WalletController();
-
 
 if (process.env.IS_EXTENSION) {
   RedirectChainNames.init();
@@ -65,6 +64,8 @@ if (process.env.IS_EXTENSION) {
         setPhishingUrl(urls);
         break;
       }
+      default:
+        break;
     }
 
     if (msg.from === 'content' && msg.type === 'readDom' && (msg.data.address || msg.data.chainName)) {
@@ -83,27 +84,30 @@ if (process.env.IS_EXTENSION) {
   popupConnections.init();
   rpcWallet.init(controller, popupConnections);
   browser.runtime.onConnect.addListener(async port => {
-    if (port.sender.id == browser.runtime.id) {
+    if (port.sender.id === browser.runtime.id) {
       const connectionType = detectConnectionType(port);
-      if (connectionType == CONNECTION_TYPES.EXTENSION) {
-        port.onMessage.addListener(async ({ type, payload, uuid }, sender) => {
+      if (connectionType === CONNECTION_TYPES.EXTENSION) {
+        port.onMessage.addListener(async ({ type, payload, uuid }) => {
           if (HDWALLET_METHODS.includes(type)) {
             port.postMessage({ uuid, res: await controller[type](payload) });
           }
           if (AEX2_METHODS[type]) rpcWallet[type](payload);
 
-          if (NOTIFICATION_METHODS[type]) notification[type](payload);
+          if (NOTIFICATION_METHODS[type]) {
+            await switchNode();
+            notification[type]();
+          }
         });
-      } else if (connectionType == CONNECTION_TYPES.POPUP) {
+      } else if (connectionType === CONNECTION_TYPES.POPUP) {
         const url = new URL(port.sender.url);
         const id = url.searchParams.get('id');
 
         popupConnections.addConnection(id, port);
-      } else if (connectionType == CONNECTION_TYPES.OTHER) {
+      } else if (connectionType === CONNECTION_TYPES.OTHER) {
         const check = rpcWallet.sdkReady(() => {
           rpcWallet.addConnection(port);
         });
-        port.onDisconnect.addListener(p => {
+        port.onDisconnect.addListener(() => {
           clearInterval(check);
         });
       }
@@ -116,20 +120,19 @@ export const handleMessage = ({ type, payload }) => {
     return controller[type](payload);
   }
 
-  if(process.env.RUNNING_IN_TESTS) {
-    if(type === "POPUP_INFO") {
-      if(payload.txType) {
-        const props = popupProps["base"]
-        props.action.params.tx = (buildTx(payload.txType)).tx
-        return props
-      } else {
-        return popupProps[payload.popupType]
+  if (process.env.RUNNING_IN_TESTS) {
+    if (type === 'POPUP_INFO') {
+      if (payload.txType) {
+        const props = popupProps.base;
+        props.action.params.tx = buildTx(payload.txType).tx;
+        return props;
       }
-    } else if(["ACTION_DENY", "ACTION_ACCEPT"].includes(type)) {
-      return "send"
+      return popupProps[payload.popupType];
+    }
+    if (['ACTION_DENY', 'ACTION_ACCEPT'].includes(type)) {
+      return 'send';
     }
   }
-
 
   throw new Error(`Unknown message type: ${type}`);
 };

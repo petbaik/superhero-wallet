@@ -1,5 +1,5 @@
 <template>
-  <ae-main :class="aeppPopup ? 'ae-main-popup ae-main-wave' : waveBg ? 'ae-main-wave' : ''" :style="waveBg ? { 'background-image': `url(${wave_bg}) !important` } : {}">
+  <ae-main :class="aeppPopup ? 'ae-main-popup ae-main-wave' : waveBg ? 'ae-main-wave' : ''">
     <Header @toggle-sidebar="showSidebar = !showSidebar" />
 
     <router-view :key="$route.fullPath" />
@@ -33,24 +33,19 @@ export default {
     NodeConnectionStatus,
   },
   data: () => ({
-    wave_bg: browser.runtime.getURL('../icons/background-big-wave.png'),
     showSidebar: false,
   }),
   computed: {
-    ...mapGetters(['account', 'current', 'mainLoading', 'sdk', 'isLoggedIn', 'aeppPopup']),
+    ...mapGetters(['account', 'current', 'mainLoading', 'sdk', 'isLoggedIn', 'aeppPopup', 'notifications']),
     waveBg() {
       return ['/intro', '/popup-sign-tx', '/connect', '/importAccount', '/receive'].includes(this.$route.path);
     },
   },
   async created() {
-    const { language, activeNetwork } = await browser.storage.local.get(['language', 'activeNetwork']);
+    const { language } = await browser.storage.local.get(['language']);
 
     this.$store.state.current.language = language;
     if (language) fetchAndSetLocale(language);
-
-    if (activeNetwork) {
-      this.$store.state.current.network = activeNetwork;
-    }
 
     if (process.env.IS_EXTENSION) {
       readWebPageDom((receiver, sendResponse) => {
@@ -62,20 +57,27 @@ export default {
     this.checkSdkReady();
     this.getCurrencies();
 
-    if (await this.$store.dispatch('checkExtensionUpdate') && !process.env.RUNNING_IN_TESTS) {
-      this.$store.commit('ADD_NOTIFICATION', { title: '', content: this.$t('pages.account.updateExtension') });
+    if ((await this.$store.dispatch('checkExtensionUpdate')) && !process.env.RUNNING_IN_TESTS) {
+      this.$store.commit('ADD_NOTIFICATION', {
+        title: '',
+        content: this.$t('pages.account.updateExtension'),
+        route: '',
+      });
     }
     if (!(await this.$store.dispatch('checkBackupSeed'))) {
       this.$store.commit('ADD_NOTIFICATION', {
         title: '',
         content: `${this.$t('pages.account.youNeedTo')} ${this.$t('pages.account.backup')} ${this.$t('pages.account.yourSeedPhrase')}`,
+        route: '/securitySettings',
       });
     }
+    const { notifCounter } = await browser.storage.local.get('notifCounter');
+    if (notifCounter !== 0) await browser.storage.local.set({ notifCounter: this.notifications.length });
   },
   methods: {
     checkSdkReady() {
-      const checkSDKReady = setInterval(() => {
-        if (this.sdk !== null) {
+      const checkSDKReady = setInterval(async () => {
+        if (this.sdk) {
           if (!window.RUNNING_IN_POPUP && process.env.IS_EXTENSION) {
             postMessage({ type: AEX2_METHODS.INIT_RPC_WALLET, payload: { address: this.account.publicKey, network: this.current.network } });
           }
@@ -88,7 +90,7 @@ export default {
       let triggerOnce = false;
       this.polling = setInterval(async () => {
         if (this.sdk != null && this.isLoggedIn) {
-          if(!process.env.RUNNING_IN_TESTS) this.$store.dispatch('updateBalance');
+          if (!process.env.RUNNING_IN_TESTS) this.$store.dispatch('updateBalance');
           if (!triggerOnce) {
             this.$store.dispatch('getRegisteredNames');
             triggerOnce = true;
@@ -134,6 +136,7 @@ export default {
   &.ae-main-wave {
     background-position: 100% 100% !important;
     background-repeat: no-repeat !important;
+    background-image: url('../icons/background-big-wave.png') !important;
   }
 
   padding-top: 50px;

@@ -11,7 +11,7 @@
             {{ $t('pages.tipPage.to') }}
           </p>
           <div class="d-flex">
-            <Textarea :type="address" data-cy="address" v-model="form.address" placeholder="ak.. / name.chain" size="h-50"></Textarea>
+            <Textarea :type="address" data-cy="address" :error="form.address && !validAddress" v-model="form.address" placeholder="ak.. / name.chain" size="h-50"></Textarea>
             <div class="scan" data-cy="scan-button" @click="scan">
               <QrIcon />
               <small>{{ $t('pages.send.scan') }}</small>
@@ -20,7 +20,9 @@
           <AmountSend data-cy="amount-box" @changeAmount="val => (form.amount = val)" :value="form.amount" />
           <div class="flex flex-align-center flex-justify-between">
             <Button data-cy="reject-withdraw" half @click="navigateAccount">{{ $t('pages.send.cancel') }}</Button>
-            <Button data-cy="review-withdraw" half @click="step = 2" :disabled="!form.address || !form.amount || (form.amount && isNaN(form.amount))">{{ $t('pages.send.review') }}</Button>
+            <Button data-cy="review-withdraw" half @click="step = 2" :disabled="!form.address || !form.amount || (form.amount && isNaN(form.amount))">{{
+              $t('pages.send.review')
+            }}</Button>
           </div>
         </div>
       </div>
@@ -95,18 +97,17 @@
 
 <script>
 import { mapGetters } from 'vuex';
-import BigNumber from 'bignumber.js';
-import { MAGNITUDE, calculateFee, TX_TYPES } from '../../utils/constants';
-import { contractEncodeCall, checkAddress, chekAensName, checkHashType } from '../../utils/helper';
+import { calculateFee, TX_TYPES } from '../../utils/constants';
+import { checkAddress, chekAensName, checkHashType, aeToAettos, pollGetter } from '../../utils/helper';
 import { setPendingTx } from '../../utils';
 import openUrl from '../../utils/openUrl';
 import AmountSend from '../components/AmountSend';
 import Textarea from '../components/Textarea';
 import AccountInfo from '../components/AccountInfo';
 import BalanceInfo from '../components/BalanceInfo';
-import QrIcon from '../../../icons/qr-code.svg';
-import AlertExclamination from '../../../icons/alert-exclamation.svg';
-import Heart from '../../../icons/heart.svg';
+import QrIcon from '../../../icons/qr-code.svg?vue-component';
+import AlertExclamination from '../../../icons/alert-exclamation.svg?vue-component';
+import Heart from '../../../icons/heart.svg?vue-component';
 
 export default {
   name: 'Send',
@@ -124,7 +125,7 @@ export default {
       step: 1,
       form: {
         address: '',
-        amount: ''
+        amount: '',
       },
       loading: false,
       fee: {
@@ -172,8 +173,8 @@ export default {
       return calculatedMaxValue > 0 ? calculatedMaxValue.toString() : 0;
     },
     sendSubaccounts() {
-      const subs = this.subaccounts.filter(sub => sub.publicKey != this.account.publicKey);
-      return subs.length == 0 ? false : subs;
+      const subs = this.subaccounts.filter(sub => sub.publicKey !== this.account.publicKey);
+      return subs.length === 0 ? false : subs;
     },
     txFee() {
       return this.fee.min;
@@ -183,6 +184,9 @@ export default {
     },
     activeToken() {
       return this.current.token;
+    },
+    validAddress() {
+      return checkAddress(this.form.address) || chekAensName(this.form.address);
     },
   },
   created() {
@@ -195,7 +199,6 @@ export default {
     }
   },
   async mounted() {
-    this.init();
     this.fetchFee();
   },
   methods: {
@@ -208,20 +211,13 @@ export default {
       });
     },
     async fetchFee() {
-      const fee = await calculateFee(this.current.token == 0 ? TX_TYPES.txSign : TX_TYPES.contractCall, { ...(await this.feeParams()) });
+      await pollGetter(() => this.sdk);
+      const fee = await calculateFee(this.current.token === 0 ? TX_TYPES.txSign : TX_TYPES.contractCall, { ...(await this.feeParams()) });
       this.fee = fee;
     },
     async feeParams() {
-      if (this.current.token == 0) {
-        return {
-          ...this.sdk.Ae.defaults,
-        };
-      }
       return {
         ...this.sdk.Ae.defaults,
-        callerId: this.account.publicKey,
-        contractId: this.tokens[this.current.token].contract,
-        callData: await contractEncodeCall(this.sdk, FUNGIBLE_TOKEN_CONTRACT, 'transfer', [this.account.publicKey, '0']),
       };
     },
     setTxDetails(tx) {
@@ -231,10 +227,9 @@ export default {
       this.successTx.hash = tx.hash;
     },
     async send() {
-      const sender = this.subaccounts.filter(sender => sender.publicKey == this.account.publicKey);
-      const amount = BigNumber(this.form.amount).shiftedBy(MAGNITUDE);
+      const amount = aeToAettos(this.form.amount);
       const receiver = this.form.address;
-      if (receiver == '' || (!checkAddress(receiver) && !chekAensName(receiver))) {
+      if (receiver === '' || (!checkAddress(receiver) && !chekAensName(receiver))) {
         this.$store.dispatch('popupAlert', { name: 'spend', type: 'incorrect_address' });
         this.loading = false;
         return;
@@ -244,31 +239,28 @@ export default {
         this.loading = false;
         return;
       }
-      if (this.tokenSymbol != 'AE' && this.form.amount % 1 != 0) {
+      if (this.tokenSymbol !== 'AE' && this.form.amount % 1 !== 0) {
         this.$store.dispatch('popupAlert', { name: 'spend', type: 'integer_required' });
         this.loading = false;
         return;
       }
-      if (this.maxValue - this.form.amount <= 0 && this.current.token == 0) {
+      if (this.maxValue - this.form.amount <= 0 && this.current.token === 0) {
         this.$store.dispatch('popupAlert', { name: 'spend', type: 'insufficient_balance' });
         this.loading = false;
         return;
       }
       this.loading = true;
       try {
-        const result = await this.sdk.spend(parseInt(amount), receiver, { waitMined: false });
+        const result = await this.sdk.spend(amount, receiver, { waitMined: false });
         if (result.hash) {
           await setPendingTx({ hash: result.hash, amount: this.form.amount, time: Date.parse(new Date()), type: 'spend' });
-          return this.$router.push('/account');
+          this.$router.push('/account');
         }
         this.loading = false;
       } catch (e) {
         this.$store.dispatch('popupAlert', { name: 'spend', type: 'transaction_failed' });
         this.loading = false;
       }
-    },
-    init() {
-      const calculatedMaxValue = this.balance - this.maxFee;
     },
     clearForm() {
       setTimeout(() => {
@@ -283,11 +275,11 @@ export default {
     async openTxExplorer(hash) {
       const { middlewareUrl } = this.network[this.current.network];
       const { endpoint, valid } = await checkHashType(hash);
-      if(valid) {
+      if (valid) {
         const url = `${middlewareUrl}/${endpoint}/${hash}`;
-        openUrl(url)
+        openUrl(url);
       }
-    }
+    },
   },
 };
 </script>

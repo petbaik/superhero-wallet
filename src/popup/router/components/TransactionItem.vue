@@ -10,7 +10,9 @@
       </div>
       <div class="holder">
         <span class="url" @click="visitTipUrl">{{ tipUrl }}</span>
-        <span class="seeTransaction" @click="seeTx(transactionData.hash)"><img :src="eye" /></span>
+        <span class="seeTransaction" @click="seeTx(transactionData.hash)">
+          <img src="../../../icons/eye.png" />
+        </span>
       </div>
     </ae-list-item>
   </div>
@@ -27,7 +29,6 @@ export default {
   props: ['transactionData', 'recent', 'dark'],
   data() {
     return {
-      eye: browser.runtime.getURL('../icons/eye.png'),
       status: '',
       tipUrl: null,
       checkSdk: null,
@@ -47,10 +48,10 @@ export default {
     ...mapGetters(['account', 'popup', 'sdk', 'current', 'network', 'transactions', 'tipping']),
     txType() {
       if (
-        this.transactionData.tx.sender_id == this.account.publicKey ||
-        this.transactionData.tx.account_id == this.account.publicKey ||
-        this.transactionData.tx.owner_id == this.account.publicKey ||
-        this.transactionData.tx.caller_id == this.account.publicKey
+        this.transactionData.tx.sender_id === this.account.publicKey ||
+        this.transactionData.tx.account_id === this.account.publicKey ||
+        this.transactionData.tx.owner_id === this.account.publicKey ||
+        this.transactionData.tx.caller_id === this.account.publicKey
       ) {
         return 'Sent';
       }
@@ -58,7 +59,6 @@ export default {
     },
     txAmount() {
       const amount = this.transactionData.tx.amount ? this.transactionData.tx.amount : 0;
-      // const { fee } = this.transactionData.tx;
       return convertToAE(amount).toFixed(3);
     },
     txAmountToCurrency() {

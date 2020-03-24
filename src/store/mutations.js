@@ -27,13 +27,6 @@ export default {
   [types.UPDATE_LATEST_TRANSACTIONS](state, payload) {
     state.transactions.latest = payload;
   },
-  [types.UPDATE_ALL_TRANSACTIONS](state, payload) {
-    if (payload.new) {
-      state.transactions.all.unshift(...payload.transactions);
-    } else {
-      state.transactions.all.push(...payload.transactions);
-    }
-  },
   [types.SET_PENDING_TXS](state, payload) {
     state.transactions.pending = payload;
   },
@@ -73,13 +66,22 @@ export default {
     state.names = names;
   },
   [types.SET_USERNETWORK](state, payload) {
-    state.userNetworks.push(payload);
+    state.userNetworks = { ...state.userNetworks, ...payload };
   },
   [types.SET_USERNETWORKS](state, payload) {
     state.userNetworks = payload;
   },
+  [types.SET_NETWORKS](state, payload) {
+    state.network = payload;
+  },
+  [types.ADD_NETWORK](state, payload) {
+    state.network = { ...state.network, ...{ [payload.name]: { ...payload } } };
+  },
   [types.INIT_SDK](state, payload) {
     state.sdk = payload;
+  },
+  [types.SET_MIDDLEWARE](state, payload) {
+    state.middleware = payload;
   },
   [types.SET_AEPP_POPUP](state, payload) {
     state.aeppPopup = payload;

@@ -41,14 +41,14 @@
           <li @click="step = 2" :class="step === 2 ? 'current' : ''"><a></a></li>
           <li @click="step = 3" :class="step === 3 ? 'current' : ''"><a></a></li>
         </ul>
-        <RightArrow @click="step = step + 1" class="right-arrow" v-show="step < 3" data-cy="next"/>
+        <RightArrow @click="step = step + 1" class="right-arrow" v-show="step < 3" data-cy="next" />
         <button class="skip-button" @click="step = 3" v-show="step < 3" data-cy="skip">{{ $t('pages.intro.skip') }}</button>
         <Button style="margin-top: 30px;" @click="createWallet" v-if="step === 3" data-cy="generate-wallet">{{ $t('pages.intro.generateWallet') }}</Button>
       </div>
 
       <div v-show="step === 4">
         <h2>{{ $t('pages.intro.createdWallet') }}</h2>
-        <h4>{{$t('pages.intro.step4text-0')}}</h4>
+        <h4>{{ $t('pages.intro.step4text-0') }}</h4>
         <div class="text-info">
           <span class="mb-4 block">{{ $t('pages.intro.step4text-1') }}</span>
           <span class="mb-4 block"> {{ $t('pages.intro.step4text-2') }} </span>
@@ -63,12 +63,11 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex';
 import { generateMnemonic, mnemonicToSeed } from '@aeternity/bip39';
-import Claim from '../../../icons/claim.svg';
-import Heart from '../../../icons/heart.svg';
-import LeftArrow from '../../../icons/left-arrow.svg';
-import RightArrow from '../../../icons/right-arrow.svg';
+import Claim from '../../../icons/claim.svg?vue-component';
+import Heart from '../../../icons/heart.svg?vue-component';
+import LeftArrow from '../../../icons/left-arrow.svg?vue-component';
+import RightArrow from '../../../icons/right-arrow.svg?vue-component';
 import Button from '../components/Button';
 
 export default {
@@ -78,9 +77,6 @@ export default {
     Button,
     LeftArrow,
     RightArrow,
-  },
-  computed: {
-    ...mapGetters(['isLoggedIn']),
   },
   data() {
     return {
@@ -103,13 +99,11 @@ export default {
       this.next();
     },
     prev() {
-      this.step--;
+      this.step -= 1;
     },
     next() {
       if (this.step <= this.totalsteps) {
-        this.step++;
-      } else if (this.step == this.totalsteps) {
-        return false;
+        this.step += 1;
       }
     },
   },
