@@ -1,3 +1,6 @@
+dist: xenial
+services:
+  - xvfb
 language: node_js
 node_js:
   - 12
@@ -11,7 +14,8 @@ cache:
     - ~/.cache
  
 script:
-  - npm run lint -- --no-fix
+  # - npm run lint -- --no-fix
+  - xvfb-run google-chrome --remote-debugging-port=9222 --disable-gpu
   - npm test
-  - npm run build
+  # - npm run build
 
